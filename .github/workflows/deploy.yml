@@ -43,7 +43,7 @@ jobs:
       - name: Package app
         run: |
           mkdir package
-          cp -R dist server shared node_modules package.json pnpm-lock.yaml package/
+          cp -R dist dist-server node_modules package.json pnpm-lock.yaml package/
           cd package
           zip -r ../ape-hub.zip .
 
@@ -94,6 +94,7 @@ jobs:
               DB_PORT="$DB_PORT" \
               DB_ENCRYPT="$DB_ENCRYPT" \
               DB_TRUST_CERT="$DB_TRUST_CERT" \
+              PORT=8080 \
               SCM_DO_BUILD_DURING_DEPLOYMENT=false
 
       - name: Deploy to App Service
