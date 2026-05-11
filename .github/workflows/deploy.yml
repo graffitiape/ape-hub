@@ -1,0 +1,103 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NODE_VERSION: ${{ vars.NODE_VERSION || '22.x' }}
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install and build
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm build
+        env:
+          VITE_AZURE_CLIENT_ID: ${{ vars.APP_AUTH_CLIENT_ID }}
+          VITE_AZURE_TENANT_ID: ${{ vars.APP_AUTH_TENANT_ID }}
+          VITE_REDIRECT_URI: ${{ vars.VITE_REDIRECT_URI }}
+          VITE_DEV_MODE: "false"
+
+      - name: Package app
+        run: |
+          mkdir package
+          cp -R dist server shared node_modules package.json pnpm-lock.yaml package/
+          cd package
+          zip -r ../ape-hub.zip .
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_DEPLOY_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_DEPLOY_SUBSCRIPTION_ID }}
+
+      - name: Configure App Service
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+          APP_AUTH_CLIENT_ID: ${{ vars.APP_AUTH_CLIENT_ID }}
+          APP_AUTH_TENANT_ID: ${{ vars.APP_AUTH_TENANT_ID }}
+          DB_SERVER: ${{ vars.DB_SERVER }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          DB_USER: ${{ vars.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ vars.DB_PORT }}
+          DB_ENCRYPT: ${{ vars.DB_ENCRYPT }}
+          DB_TRUST_CERT: ${{ vars.DB_TRUST_CERT }}
+        run: |
+          az webapp config set \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --startup-file "npm start" \
+            --always-on true
+
+          az webapp update \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --https-only true
+
+          az webapp config appsettings set \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --settings \
+              NODE_ENV=production \
+              DEV_MODE=false \
+              AZURE_TENANT_ID="$APP_AUTH_TENANT_ID" \
+              AZURE_CLIENT_ID="$APP_AUTH_CLIENT_ID" \
+              DB_SERVER="$DB_SERVER" \
+              DB_NAME="$DB_NAME" \
+              DB_USER="$DB_USER" \
+              DB_PASSWORD="$DB_PASSWORD" \
+              DB_PORT="$DB_PORT" \
+              DB_ENCRYPT="$DB_ENCRYPT" \
+              DB_TRUST_CERT="$DB_TRUST_CERT" \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: ape-hub.zip

@@ -27,6 +27,12 @@ function getJWKS() {
   return jwks
 }
 
+function getAllowedAudiences() {
+  const clientId = process.env.AZURE_CLIENT_ID
+  if (!clientId) throw new Error("AZURE_CLIENT_ID is required in production")
+  return [clientId, `api://${clientId}`]
+}
+
 export async function authMiddleware(c: Context, next: Next) {
   if (DEV_MODE) {
     const userId = "dev-user"
@@ -48,7 +54,7 @@ export async function authMiddleware(c: Context, next: Next) {
     const token = authHeader.slice(7)
     const { payload } = await jwtVerify(token, getJWKS(), {
       issuer: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0`,
-      audience: process.env.AZURE_CLIENT_ID,
+      audience: getAllowedAudiences(),
     })
 
     const userId = payload.oid as string
