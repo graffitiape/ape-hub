@@ -3,7 +3,6 @@ import { Plus, Trash2, FolderKanban, MoreHorizontal, Pencil } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,15 +48,13 @@ export function ProjectSidebar() {
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 px-4 py-4">
+      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
         <FolderKanban className="h-5 w-5 text-sidebar-primary" />
         <h1 className="text-lg font-semibold">Ape Hub</h1>
         <div className="ml-auto">
           <ThemeToggle />
         </div>
       </div>
-
-      <Separator />
 
       <div className="flex items-center gap-2 px-3 py-3">
         <Input

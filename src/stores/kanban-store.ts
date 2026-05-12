@@ -34,6 +34,18 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
+export function clearKanbanState() {
+  localStorage.removeItem(ACTIVE_PROJECT_KEY)
+  setState({
+    projects: [],
+    columns: [],
+    tasks: [],
+    activeProjectId: null,
+    loading: false,
+    error: null,
+  })
+}
+
 // --- Data Loading ---
 
 export async function loadProjects() {

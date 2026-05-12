@@ -1,26 +1,39 @@
 import { useEffect } from "react"
+import { useIsAuthenticated } from "@azure/msal-react"
 import { ProjectSidebar } from "@/components/project-sidebar"
 import { KanbanBoard } from "@/components/kanban-board"
+import { LoginPage } from "@/components/login-page"
 import { UserMenu } from "@/components/user-menu"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { loadProjects } from "@/stores/kanban-store"
+import { clearKanbanState, loadProjects } from "@/stores/kanban-store"
 
 export default function App() {
+  const isAuthenticated = useIsAuthenticated()
+
   useEffect(() => {
-    loadProjects()
-  }, [])
+    if (!isAuthenticated) {
+      clearKanbanState()
+      return
+    }
+
+    void loadProjects()
+  }, [isAuthenticated])
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <ProjectSidebar />
-        <main className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex items-center justify-end border-b px-4 py-2">
-            <UserMenu />
-          </header>
-          <KanbanBoard />
-        </main>
-      </div>
+      {!isAuthenticated ? (
+        <LoginPage />
+      ) : (
+        <div className="flex h-screen overflow-hidden bg-background">
+          <ProjectSidebar />
+          <main className="flex flex-1 flex-col overflow-hidden">
+            <header className="flex h-16 shrink-0 items-center justify-end border-b px-4">
+              <UserMenu />
+            </header>
+            <KanbanBoard />
+          </main>
+        </div>
+      )}
     </TooltipProvider>
   )
 }
