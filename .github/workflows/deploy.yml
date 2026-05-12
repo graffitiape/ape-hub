@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ape-hub-production
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
