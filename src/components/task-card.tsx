@@ -20,6 +20,24 @@ interface TaskCardProps {
   task: Task
 }
 
+export function TaskCardPreview({ task }: TaskCardProps) {
+  return (
+    <Card className="flex items-start gap-2 p-3 shadow-lg">
+      <div className="mt-0.5 shrink-0 text-muted-foreground">
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium leading-tight">{task.title}</p>
+        {task.description ? (
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            {task.description}
+          </p>
+        ) : null}
+      </div>
+    </Card>
+  )
+}
+
 export function TaskCard({ task }: TaskCardProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)

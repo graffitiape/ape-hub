@@ -6,6 +6,7 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  MeasuringStrategy,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -15,7 +16,7 @@ import { Plus, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { KanbanColumn } from "@/components/kanban-column"
-import { TaskCard } from "@/components/task-card"
+import { TaskCardPreview } from "@/components/task-card"
 import {
   useActiveProject,
   useProjectColumns,
@@ -30,7 +31,6 @@ import {
 import type { Task } from "@/types/kanban"
 
 type DragSnapshot = {
-  taskId: string
   columnId: string
   tasks: Task[]
 }
@@ -88,7 +88,6 @@ export function KanbanBoard() {
     const task = currentTasks.find((currentTask) => currentTask.id === event.active.id)
     if (task) {
       dragSnapshot.current = {
-        taskId: task.id,
         columnId: task.columnId,
         tasks: currentTasks.map((currentTask) => ({ ...currentTask })),
       }
@@ -105,17 +104,18 @@ export function KanbanBoard() {
 
     const currentTasks = getKanbanState().tasks
     const overType = over.data.current?.type
+    const overId = over.id as string
 
-    if (overType === "column") {
-      const columnId = over.id as string
+    if (overType === "column" || columns.some((column) => column.id === overId)) {
+      const columnId = overId
       const columnTasks = currentTasks.filter(
         (task) => task.columnId === columnId && task.id !== activeId
       )
       return { columnId, index: columnTasks.length }
     }
 
-    if (overType === "task") {
-      const overTask = currentTasks.find((task) => task.id === over.id)
+    if (overType === "task" || currentTasks.some((task) => task.id === overId)) {
+      const overTask = currentTasks.find((task) => task.id === overId)
       if (!overTask) return null
 
       const columnTasks = currentTasks
@@ -151,13 +151,24 @@ export function KanbanBoard() {
   async function handleDragEnd(event: DragEndEvent) {
     const activeId = event.active.id as string
     const snapshot = dragSnapshot.current
-    const target = getDropTarget(event, activeId)
+    let target = getDropTarget(event, activeId)
     dragSnapshot.current = null
     setActiveTask(null)
 
-    if (!snapshot || !target) {
-      if (snapshot) replaceTasks(snapshot.tasks)
-      return
+    if (!snapshot) return
+
+    if (!target) {
+      const currentTask = getKanbanState().tasks.find((task) => task.id === activeId)
+
+      if (currentTask && currentTask.columnId !== snapshot.columnId) {
+        target = {
+          columnId: currentTask.columnId,
+          index: currentTask.order,
+        }
+      } else {
+        replaceTasks(snapshot.tasks)
+        return
+      }
     }
 
     const currentTasks = getKanbanState().tasks
@@ -232,6 +243,7 @@ export function KanbanBoard() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
@@ -242,7 +254,7 @@ export function KanbanBoard() {
           ))}
 
           <DragOverlay>
-            {activeTask ? <TaskCard task={activeTask} /> : null}
+            {activeTask ? <TaskCardPreview task={activeTask} /> : null}
           </DragOverlay>
         </DndContext>
 
