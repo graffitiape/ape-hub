@@ -43,8 +43,10 @@ jobs:
       - name: Package app
         run: |
           mkdir package
-          cp -R dist dist-server node_modules package.json pnpm-lock.yaml package/
+          cp -R dist dist-server package.json pnpm-lock.yaml package/
           cd package
+          pnpm install --prod --frozen-lockfile --config.node-linker=hoisted
+          node -e "require('mssql')"
           zip -r ../ape-hub.zip .
 
       - name: Azure login
