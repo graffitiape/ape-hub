@@ -48,10 +48,38 @@ jobs:
       - name: Package app
         run: |
           mkdir package
-          cp -R dist dist-server package.json pnpm-lock.yaml package/
+          cp -R dist dist-server package/
+          node <<'NODE'
+          const fs = require("node:fs")
+          const source = JSON.parse(fs.readFileSync("package.json", "utf8"))
+          const runtimeDependencies = [
+            "@hono/node-server",
+            "dotenv",
+            "hono",
+            "jose",
+            "mssql",
+            "nanoid",
+          ]
+          const dependencies = Object.fromEntries(
+            runtimeDependencies.map((name) => [name, source.dependencies[name]])
+          )
+          fs.writeFileSync(
+            "package/package.json",
+            `${JSON.stringify({
+              name: source.name,
+              private: true,
+              version: source.version,
+              type: source.type,
+              scripts: {
+                start: "node dist-server/server/index.js",
+              },
+              dependencies,
+            }, null, 2)}\n`
+          )
+          NODE
           cd package
-          pnpm install --prod --frozen-lockfile --config.node-linker=hoisted
-          node -e "require('mssql')"
+          npm install --omit=dev --ignore-scripts --package-lock=false
+          node -e "import('@hono/node-server').then(() => import('mssql'))"
           zip -r ../ape-hub.zip .
 
       - name: Azure login
