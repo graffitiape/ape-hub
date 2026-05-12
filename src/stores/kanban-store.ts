@@ -29,6 +29,10 @@ function getSnapshot() {
   return state
 }
 
+export function getKanbanState() {
+  return state
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => listeners.delete(listener)
@@ -332,8 +336,51 @@ export async function moveTask(
   }
 }
 
-export async function reorderTasks(columnId: string, orderedIds: string[]) {
-  const prev = state
+export function replaceTasks(tasks: Task[]) {
+  setState({ ...state, tasks })
+}
+
+export function moveTaskLocally(
+  taskId: string,
+  toColumnId: string,
+  newOrder: number
+) {
+  const task = state.tasks.find((t) => t.id === taskId)
+  if (!task) return
+
+  const fromColumnId = task.columnId
+  const sourceTasks = state.tasks
+    .filter((t) => t.columnId === fromColumnId && t.id !== taskId)
+    .sort((a, b) => a.order - b.order)
+  const targetTasks =
+    fromColumnId === toColumnId
+      ? sourceTasks
+      : state.tasks
+          .filter((t) => t.columnId === toColumnId)
+          .sort((a, b) => a.order - b.order)
+
+  const targetIndex = Math.min(Math.max(newOrder, 0), targetTasks.length)
+  targetTasks.splice(targetIndex, 0, { ...task, columnId: toColumnId })
+
+  const updates = new Map<string, Task>()
+  sourceTasks.forEach((sourceTask, index) => {
+    updates.set(sourceTask.id, { ...sourceTask, order: index })
+  })
+  targetTasks.forEach((targetTask, index) => {
+    updates.set(targetTask.id, {
+      ...targetTask,
+      columnId: toColumnId,
+      order: index,
+    })
+  })
+
+  setState({
+    ...state,
+    tasks: state.tasks.map((currentTask) => updates.get(currentTask.id) ?? currentTask),
+  })
+}
+
+export function reorderTasksLocally(columnId: string, orderedIds: string[]) {
   setState({
     ...state,
     tasks: state.tasks.map((t) => {
@@ -342,9 +389,29 @@ export async function reorderTasks(columnId: string, orderedIds: string[]) {
       return idx >= 0 ? { ...t, order: idx } : t
     }),
   })
+}
+
+export async function persistTaskMove(
+  taskId: string,
+  toColumnId: string,
+  newOrder: number
+) {
+  await api.put(`/tasks/${taskId}/move`, {
+    columnId: toColumnId,
+    order: newOrder,
+  })
+}
+
+export async function persistTaskOrder(columnId: string, orderedIds: string[]) {
+  await api.put(`/columns/${columnId}/tasks/order`, { orderedIds })
+}
+
+export async function reorderTasks(columnId: string, orderedIds: string[]) {
+  const prev = state
+  reorderTasksLocally(columnId, orderedIds)
 
   try {
-    await api.put(`/columns/${columnId}/tasks/order`, { orderedIds })
+    await persistTaskOrder(columnId, orderedIds)
   } catch {
     setState(prev)
   }

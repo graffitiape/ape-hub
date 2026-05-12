@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -19,20 +19,46 @@ import { TaskCard } from "@/components/task-card"
 import {
   useActiveProject,
   useProjectColumns,
-  useKanbanStore,
   addColumn,
-  moveTask,
-  reorderTasks,
+  getKanbanState,
+  moveTaskLocally,
+  persistTaskMove,
+  persistTaskOrder,
+  reorderTasksLocally,
+  replaceTasks,
 } from "@/stores/kanban-store"
 import type { Task } from "@/types/kanban"
+
+type DragSnapshot = {
+  taskId: string
+  columnId: string
+  tasks: Task[]
+}
+
+type DropTarget = {
+  columnId: string
+  index: number
+}
+
+function sortByOrder(a: Task, b: Task) {
+  return a.order - b.order
+}
+
+function getOrderedTaskIds(columnId: string) {
+  return getKanbanState()
+    .tasks
+    .filter((task) => task.columnId === columnId)
+    .sort(sortByOrder)
+    .map((task) => task.id)
+}
 
 export function KanbanBoard() {
   const activeProject = useActiveProject()
   const columns = useProjectColumns(activeProject?.id ?? null)
-  const { tasks } = useKanbanStore()
   const [addingColumn, setAddingColumn] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState("")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const dragSnapshot = useRef<DragSnapshot | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -58,60 +84,137 @@ export function KanbanBoard() {
   }
 
   function handleDragStart(event: DragStartEvent) {
-    const { active } = event
-    if (active.data.current?.type === "task") {
-      setActiveTask(active.data.current.task)
+    const currentTasks = getKanbanState().tasks
+    const task = currentTasks.find((currentTask) => currentTask.id === event.active.id)
+    if (task) {
+      dragSnapshot.current = {
+        taskId: task.id,
+        columnId: task.columnId,
+        tasks: currentTasks.map((currentTask) => ({ ...currentTask })),
+      }
+      setActiveTask(task)
     }
+  }
+
+  function getDropTarget(
+    event: DragOverEvent | DragEndEvent,
+    activeId: string
+  ): DropTarget | null {
+    const { over } = event
+    if (!over) return null
+
+    const currentTasks = getKanbanState().tasks
+    const overType = over.data.current?.type
+
+    if (overType === "column") {
+      const columnId = over.id as string
+      const columnTasks = currentTasks.filter(
+        (task) => task.columnId === columnId && task.id !== activeId
+      )
+      return { columnId, index: columnTasks.length }
+    }
+
+    if (overType === "task") {
+      const overTask = currentTasks.find((task) => task.id === over.id)
+      if (!overTask) return null
+
+      const columnTasks = currentTasks
+        .filter((task) => task.columnId === overTask.columnId && task.id !== activeId)
+        .sort(sortByOrder)
+      const overIndex = columnTasks.findIndex((task) => task.id === overTask.id)
+
+      return {
+        columnId: overTask.columnId,
+        index: overIndex >= 0 ? overIndex : columnTasks.length,
+      }
+    }
+
+    return null
   }
 
   function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event
-    if (!over || !active.data.current) return
+    const activeId = event.active.id as string
+    const target = getDropTarget(event, activeId)
+    if (!target) return
 
-    const activeData = active.data.current
-    if (activeData.type !== "task") return
-
-    const activeTask = activeData.task as Task
-    let overColumnId: string
-
-    if (over.data.current?.type === "column") {
-      overColumnId = over.id as string
-    } else if (over.data.current?.type === "task") {
-      overColumnId = (over.data.current.task as Task).columnId
-    } else {
-      return
-    }
-
-    if (activeTask.columnId !== overColumnId) {
-      const overTasks = tasks.filter((t) => t.columnId === overColumnId).sort((a, b) => a.order - b.order)
-      const newOrder = overTasks.length
-      moveTask(activeTask.id, overColumnId, newOrder)
+    const currentTask = getKanbanState().tasks.find((task) => task.id === activeId)
+    const originalColumnId = dragSnapshot.current?.columnId
+    if (
+      currentTask &&
+      (currentTask.columnId !== target.columnId ||
+        (originalColumnId !== target.columnId && currentTask.order !== target.index))
+    ) {
+      moveTaskLocally(activeId, target.columnId, target.index)
     }
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
+  async function handleDragEnd(event: DragEndEvent) {
+    const activeId = event.active.id as string
+    const snapshot = dragSnapshot.current
+    const target = getDropTarget(event, activeId)
+    dragSnapshot.current = null
     setActiveTask(null)
 
-    if (!over || active.id === over.id) return
-
-    const activeData = active.data.current
-    const overData = over.data.current
-
-    if (activeData?.type === "task" && overData?.type === "task") {
-      const overTask = overData.task as Task
-      const columnId = overTask.columnId
-      const columnTasks = tasks
-        .filter((t) => t.columnId === columnId)
-        .sort((a, b) => a.order - b.order)
-      const taskIds = columnTasks.map((t) => t.id)
-      const oldIndex = taskIds.indexOf(active.id as string)
-      const newIndex = taskIds.indexOf(over.id as string)
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(taskIds, oldIndex, newIndex)
-        reorderTasks(columnId, newOrder)
-      }
+    if (!snapshot || !target) {
+      if (snapshot) replaceTasks(snapshot.tasks)
+      return
     }
+
+    const currentTasks = getKanbanState().tasks
+    const currentTask = currentTasks.find((task) => task.id === activeId)
+    const overTask = currentTasks.find((task) => task.id === event.over?.id)
+
+    if (
+      currentTask &&
+      overTask &&
+      snapshot.columnId === target.columnId &&
+      currentTask.columnId === overTask.columnId
+    ) {
+      const orderedIds = getOrderedTaskIds(currentTask.columnId)
+      const oldIndex = orderedIds.indexOf(activeId)
+      const newIndex = orderedIds.indexOf(overTask.id)
+
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        reorderTasksLocally(
+          currentTask.columnId,
+          arrayMove(orderedIds, oldIndex, newIndex)
+        )
+      }
+    } else {
+      moveTaskLocally(activeId, target.columnId, target.index)
+    }
+
+    const finalTasks = getKanbanState().tasks
+    const finalTask = finalTasks.find((task) => task.id === activeId)
+    if (!finalTask) {
+      replaceTasks(snapshot.tasks)
+      return
+    }
+
+    const touchedColumnIds = new Set([snapshot.columnId, finalTask.columnId])
+
+    try {
+      if (snapshot.columnId !== finalTask.columnId) {
+        await persistTaskMove(activeId, finalTask.columnId, finalTask.order)
+      }
+
+      await Promise.all(
+        [...touchedColumnIds].map((columnId) =>
+          persistTaskOrder(columnId, getOrderedTaskIds(columnId))
+        )
+      )
+    } catch (err) {
+      console.error(err)
+      replaceTasks(snapshot.tasks)
+    }
+  }
+
+  function handleDragCancel() {
+    if (dragSnapshot.current) {
+      replaceTasks(dragSnapshot.current.tasks)
+      dragSnapshot.current = null
+    }
+    setActiveTask(null)
   }
 
   return (
@@ -132,6 +235,7 @@ export function KanbanBoard() {
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           {columns.map((col) => (
             <KanbanColumn key={col.id} column={col} />
@@ -143,7 +247,7 @@ export function KanbanBoard() {
         </DndContext>
 
         {/* Add column */}
-        <div className="w-72 shrink-0">
+        <div className="w-[22rem] shrink-0">
           {addingColumn ? (
             <div className="space-y-2 rounded-xl border bg-card p-3">
               <Input
