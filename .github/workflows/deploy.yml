@@ -37,6 +37,7 @@ jobs:
         env:
           VITE_AZURE_CLIENT_ID: ${{ vars.APP_AUTH_CLIENT_ID }}
           VITE_AZURE_TENANT_ID: ${{ vars.APP_AUTH_TENANT_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           VITE_REDIRECT_URI: ${{ vars.VITE_REDIRECT_URI }}
           VITE_DEV_MODE: "false"
 
@@ -62,6 +63,7 @@ jobs:
           WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
           APP_AUTH_CLIENT_ID: ${{ vars.APP_AUTH_CLIENT_ID }}
           APP_AUTH_TENANT_ID: ${{ vars.APP_AUTH_TENANT_ID }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           DB_SERVER: ${{ vars.DB_SERVER }}
           DB_NAME: ${{ vars.DB_NAME }}
           DB_USER: ${{ vars.DB_USER }}
@@ -89,6 +91,7 @@ jobs:
               DEV_MODE=false \
               AZURE_TENANT_ID="$APP_AUTH_TENANT_ID" \
               AZURE_CLIENT_ID="$APP_AUTH_CLIENT_ID" \
+              GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \
               DB_SERVER="$DB_SERVER" \
               DB_NAME="$DB_NAME" \
               DB_USER="$DB_USER" \

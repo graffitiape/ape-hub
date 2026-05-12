@@ -8,10 +8,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { loginRequest } from "@/lib/auth-config"
+import { clearGoogleCredential, useGoogleAuth } from "@/lib/google-auth"
 
 export function UserMenu() {
   const { instance, accounts } = useMsal()
-  const isAuthenticated = useIsAuthenticated()
+  const isMicrosoftAuthenticated = useIsAuthenticated()
+  const googleAuth = useGoogleAuth()
+  const isAuthenticated = isMicrosoftAuthenticated || googleAuth.isAuthenticated
 
   if (!isAuthenticated) {
     return (
@@ -28,6 +31,18 @@ export function UserMenu() {
   }
 
   const account = accounts[0]
+  const userName =
+    isMicrosoftAuthenticated ? account?.name : googleAuth.user?.name
+  const userEmail =
+    isMicrosoftAuthenticated ? account?.username : googleAuth.user?.email
+
+  async function handleLogout() {
+    clearGoogleCredential()
+
+    if (isMicrosoftAuthenticated) {
+      await instance.logoutPopup().catch(console.error)
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -38,10 +53,10 @@ export function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <div className="px-2 py-1.5">
-          <p className="text-sm font-medium">{account?.name ?? "User"}</p>
-          <p className="text-xs text-muted-foreground">{account?.username}</p>
+          <p className="text-sm font-medium">{userName ?? "User"}</p>
+          <p className="text-xs text-muted-foreground">{userEmail}</p>
         </div>
-        <DropdownMenuItem onClick={() => instance.logoutPopup().catch(console.error)}>
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-3.5 w-3.5" />
           Sign out
         </DropdownMenuItem>

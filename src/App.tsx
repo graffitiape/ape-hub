@@ -5,10 +5,13 @@ import { KanbanBoard } from "@/components/kanban-board"
 import { LoginPage } from "@/components/login-page"
 import { UserMenu } from "@/components/user-menu"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { useGoogleAuth } from "@/lib/google-auth"
 import { clearKanbanState, loadProjects } from "@/stores/kanban-store"
 
 export default function App() {
-  const isAuthenticated = useIsAuthenticated()
+  const isMicrosoftAuthenticated = useIsAuthenticated()
+  const googleAuth = useGoogleAuth()
+  const isAuthenticated = isMicrosoftAuthenticated || googleAuth.isAuthenticated
 
   useEffect(() => {
     if (!isAuthenticated) {

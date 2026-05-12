@@ -1,4 +1,5 @@
 import type { IPublicClientApplication } from "@azure/msal-browser"
+import { getGoogleCredential } from "@/lib/google-auth"
 
 let msalInstance: IPublicClientApplication | null = null
 
@@ -12,7 +13,7 @@ async function getToken(): Promise<string | null> {
   if (DEV_MODE || !msalInstance) return null
 
   const accounts = msalInstance.getAllAccounts()
-  if (accounts.length === 0) return null
+  if (accounts.length === 0) return getGoogleCredential()
 
   try {
     const response = await msalInstance.acquireTokenSilent({
@@ -31,7 +32,7 @@ async function getToken(): Promise<string | null> {
       })
       return response.accessToken
     } catch {
-      return null
+      return getGoogleCredential()
     }
   }
 }

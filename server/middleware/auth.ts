@@ -12,25 +12,88 @@ declare module "hono" {
 
 const DEV_MODE = process.env.DEV_MODE === "true"
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
+let microsoftJwks: ReturnType<typeof createRemoteJWKSet> | null = null
+let googleJwks: ReturnType<typeof createRemoteJWKSet> | null = null
 
-function getJWKS() {
-  if (!jwks) {
+type AuthenticatedUser = {
+  id: string
+  name: string
+  email: string
+}
+
+function getMicrosoftJWKS() {
+  if (!microsoftJwks) {
     const tenantId = process.env.AZURE_TENANT_ID
     if (!tenantId) throw new Error("AZURE_TENANT_ID is required in production")
-    jwks = createRemoteJWKSet(
+    microsoftJwks = createRemoteJWKSet(
       new URL(
         `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`
       )
     )
   }
-  return jwks
+  return microsoftJwks
+}
+
+function getGoogleJWKS() {
+  if (!googleJwks) {
+    googleJwks = createRemoteJWKSet(
+      new URL("https://www.googleapis.com/oauth2/v3/certs")
+    )
+  }
+  return googleJwks
 }
 
 function getAllowedAudiences() {
   const clientId = process.env.AZURE_CLIENT_ID
   if (!clientId) throw new Error("AZURE_CLIENT_ID is required in production")
   return [clientId, `api://${clientId}`]
+}
+
+async function verifyMicrosoftToken(token: string): Promise<AuthenticatedUser> {
+  const { payload } = await jwtVerify(token, getMicrosoftJWKS(), {
+    issuer: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0`,
+    audience: getAllowedAudiences(),
+  })
+
+  const userId = payload.oid as string
+  const userName = (payload.name as string) || "Unknown"
+  const userEmail =
+    (payload.preferred_username as string) || (payload.email as string) || ""
+
+  if (!userId) throw new Error("Microsoft token is missing oid")
+
+  return {
+    id: userId,
+    name: userName,
+    email: userEmail,
+  }
+}
+
+async function verifyGoogleToken(token: string): Promise<AuthenticatedUser> {
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  if (!clientId) throw new Error("GOOGLE_CLIENT_ID is required for Google login")
+
+  const { payload } = await jwtVerify(token, getGoogleJWKS(), {
+    issuer: ["https://accounts.google.com", "accounts.google.com"],
+    audience: clientId,
+  })
+
+  const googleId = payload.sub
+  if (!googleId) throw new Error("Google token is missing sub")
+
+  return {
+    id: `google:${googleId}`,
+    name: (payload.name as string) || (payload.email as string) || "Google user",
+    email: (payload.email as string) || "",
+  }
+}
+
+async function verifyToken(token: string): Promise<AuthenticatedUser> {
+  try {
+    return await verifyMicrosoftToken(token)
+  } catch {
+    return verifyGoogleToken(token)
+  }
 }
 
 export async function authMiddleware(c: Context, next: Next) {
@@ -52,21 +115,13 @@ export async function authMiddleware(c: Context, next: Next) {
 
   try {
     const token = authHeader.slice(7)
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0`,
-      audience: getAllowedAudiences(),
-    })
+    const user = await verifyToken(token)
 
-    const userId = payload.oid as string
-    const userName = (payload.name as string) || "Unknown"
-    const userEmail =
-      (payload.preferred_username as string) || (payload.email as string) || ""
+    c.set("userId", user.id)
+    c.set("userName", user.name)
+    c.set("userEmail", user.email)
 
-    c.set("userId", userId)
-    c.set("userName", userName)
-    c.set("userEmail", userEmail)
-
-    await upsertUser(userId, userName, userEmail)
+    await upsertUser(user.id, user.name, user.email)
     return next()
   } catch {
     return c.json({ error: "Invalid token" }, 401)

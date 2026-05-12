@@ -1,25 +1,48 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { InteractionStatus } from "@azure/msal-browser"
 import { useMsal } from "@azure/msal-react"
 import { FolderKanban, LogIn, ShieldCheck } from "lucide-react"
 import heroImage from "@/assets/hero.png"
 import { Button } from "@/components/ui/button"
 import { loginRequest } from "@/lib/auth-config"
+import { isGoogleAuthConfigured } from "@/lib/google-auth"
+import { renderGoogleSignInButton } from "@/lib/google-identity"
 
 export function LoginPage() {
   const { instance, inProgress } = useMsal()
-  const [error, setError] = useState<string | null>(null)
+  const googleButtonRef = useRef<HTMLDivElement>(null)
+  const [microsoftError, setMicrosoftError] = useState<string | null>(null)
+  const [googleError, setGoogleError] = useState<string | null>(null)
 
   const isBusy = inProgress !== InteractionStatus.None
+  const isGoogleConfigured = isGoogleAuthConfigured()
+
+  useEffect(() => {
+    if (!googleButtonRef.current || !isGoogleConfigured) return
+
+    let isMounted = true
+
+    renderGoogleSignInButton(googleButtonRef.current, (message) => {
+      if (isMounted) setGoogleError(message)
+    }).catch((err) => {
+      if (isMounted) {
+        setGoogleError(err instanceof Error ? err.message : "Google login failed")
+      }
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [isGoogleConfigured])
 
   async function handleLogin() {
-    setError(null)
+    setMicrosoftError(null)
 
     try {
       const result = await instance.loginPopup(loginRequest)
       instance.setActiveAccount(result.account)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
+      setMicrosoftError(err instanceof Error ? err.message : "Login failed")
     }
   }
 
@@ -70,24 +93,39 @@ export function LoginPage() {
               </div>
               <h2 className="text-3xl font-semibold">Login to Ape Hub</h2>
               <p className="text-sm text-muted-foreground">
-                Use your Microsoft account to continue.
+                Use your Microsoft or Google account to continue.
               </p>
             </div>
           </div>
 
           <div className="space-y-3">
+            <div ref={googleButtonRef} className="min-h-11 w-full" />
+
+            {!isGoogleConfigured ? (
+              <Button className="h-11 w-full" variant="outline" disabled>
+                Google sign-in is not configured
+              </Button>
+            ) : null}
+
             <Button
               className="h-11 w-full"
+              variant="outline"
               disabled={isBusy}
               onClick={handleLogin}
             >
               <LogIn className="h-4 w-4" />
-              {isBusy ? "Opening login..." : "Login with Microsoft"}
+              {isBusy ? "Opening Microsoft..." : "Login with Microsoft"}
             </Button>
 
-            {error ? (
+            {googleError ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
+                {googleError}
+              </div>
+            ) : null}
+
+            {microsoftError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {microsoftError}
               </div>
             ) : null}
           </div>
