@@ -7,6 +7,9 @@ import {
   useSensors,
   closestCorners,
   MeasuringStrategy,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -50,6 +53,16 @@ function getOrderedTaskIds(columnId: string) {
     .filter((task) => task.columnId === columnId)
     .sort(sortByOrder)
     .map((task) => task.id)
+}
+
+const boardCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args)
+  if (pointerCollisions.length > 0) return pointerCollisions
+
+  const rectangleCollisions = rectIntersection(args)
+  if (rectangleCollisions.length > 0) return rectangleCollisions
+
+  return closestCorners(args)
 }
 
 export function KanbanBoard() {
@@ -242,7 +255,7 @@ export function KanbanBoard() {
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={boardCollisionDetection}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
