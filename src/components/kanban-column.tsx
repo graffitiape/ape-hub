@@ -86,7 +86,7 @@ export function KanbanColumn({ column }: KanbanColumnProps) {
       {/* Tasks */}
       <ScrollArea className="min-h-0 flex-1 px-2 py-2">
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
+          <div className="w-full min-w-0 space-y-2">
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} />
             ))}

@@ -22,14 +22,16 @@ interface TaskCardProps {
 
 export function TaskCardPreview({ task }: TaskCardProps) {
   return (
-    <Card className="flex items-start gap-2 p-3 shadow-lg">
+    <Card className="flex w-full max-w-full items-start gap-2 p-3 shadow-lg">
       <div className="mt-0.5 shrink-0 text-muted-foreground">
         <GripVertical className="h-4 w-4" />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium leading-tight">{task.title}</p>
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <p className="whitespace-pre-wrap break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">
+          {task.title}
+        </p>
         {task.description ? (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+          <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
             {task.description}
           </p>
         ) : null}
@@ -71,17 +73,21 @@ export function TaskCard({ task }: TaskCardProps) {
         {...listeners}
         aria-label={`Drag task ${task.title}`}
         className={cn(
-          "group flex touch-none cursor-grab items-start gap-2 p-3 active:cursor-grabbing",
+          "group flex w-full max-w-full touch-none cursor-grab items-start gap-2 p-3 active:cursor-grabbing",
           isDragging && "opacity-50 shadow-lg"
         )}
       >
         <div className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-foreground">
           <GripVertical className="h-4 w-4" />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium leading-tight">{task.title}</p>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <p className="whitespace-pre-wrap break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">
+            {task.title}
+          </p>
           {task.description && (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+              {task.description}
+            </p>
           )}
         </div>
         <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
