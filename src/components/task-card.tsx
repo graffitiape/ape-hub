@@ -67,29 +67,30 @@ export function TaskCard({ task }: TaskCardProps) {
       <Card
         ref={setNodeRef}
         style={style}
+        {...attributes}
+        {...listeners}
+        aria-label={`Drag task ${task.title}`}
         className={cn(
-          "group flex items-start gap-2 p-3 cursor-grab active:cursor-grabbing",
+          "group flex touch-none cursor-grab items-start gap-2 p-3 active:cursor-grabbing",
           isDragging && "opacity-50 shadow-lg"
         )}
       >
-        <button
-          {...attributes}
-          {...listeners}
-          className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground"
-        >
+        <div className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-foreground">
           <GripVertical className="h-4 w-4" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium leading-tight truncate">{task.title}</p>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium leading-tight">{task.title}</p>
           {task.description && (
-            <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{task.description}</p>
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
           )}
         </div>
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <Button
             variant="ghost"
             size="icon"
             className="h-6 w-6"
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
             onClick={() => {
               setEditTitle(task.title)
               setEditDesc(task.description)
@@ -102,6 +103,8 @@ export function TaskCard({ task }: TaskCardProps) {
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-destructive"
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
             onClick={() => deleteTask(task.id)}
           >
             <Trash2 className="h-3 w-3" />
