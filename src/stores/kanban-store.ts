@@ -15,6 +15,9 @@ let state: KanbanState = {
 }
 
 const listeners = new Set<() => void>()
+let storeVersion = 0
+let projectsLoadVersion = 0
+let boardLoadVersion = 0
 
 function emit() {
   listeners.forEach((l) => l())
@@ -39,6 +42,9 @@ function subscribe(listener: () => void) {
 }
 
 export function clearKanbanState() {
+  storeVersion += 1
+  projectsLoadVersion += 1
+  boardLoadVersion += 1
   localStorage.removeItem(ACTIVE_PROJECT_KEY)
   setState({
     projects: [],
@@ -53,9 +59,18 @@ export function clearKanbanState() {
 // --- Data Loading ---
 
 export async function loadProjects() {
+  const requestVersion = ++projectsLoadVersion
+  const currentStoreVersion = storeVersion
   setState({ ...state, loading: true, error: null })
   try {
     const projects = await api.get<Project[]>("/projects")
+    if (
+      requestVersion !== projectsLoadVersion ||
+      currentStoreVersion !== storeVersion
+    ) {
+      return
+    }
+
     setState({ ...state, projects, loading: false })
 
     // If active project no longer exists, pick the first one
@@ -68,14 +83,31 @@ export async function loadProjects() {
       await loadBoard(state.activeProjectId)
     }
   } catch (err) {
+    if (
+      requestVersion !== projectsLoadVersion ||
+      currentStoreVersion !== storeVersion
+    ) {
+      return
+    }
+
     setState({ ...state, loading: false, error: (err as Error).message })
   }
 }
 
 export async function loadBoard(projectId: string) {
+  const requestVersion = ++boardLoadVersion
+  const currentStoreVersion = storeVersion
   setState({ ...state, loading: true, error: null })
   try {
     const board = await api.get<BoardData>(`/projects/${projectId}/board`)
+    if (
+      requestVersion !== boardLoadVersion ||
+      currentStoreVersion !== storeVersion ||
+      state.activeProjectId !== projectId
+    ) {
+      return
+    }
+
     setState({
       ...state,
       columns: [
@@ -91,6 +123,14 @@ export async function loadBoard(projectId: string) {
       loading: false,
     })
   } catch (err) {
+    if (
+      requestVersion !== boardLoadVersion ||
+      currentStoreVersion !== storeVersion ||
+      state.activeProjectId !== projectId
+    ) {
+      return
+    }
+
     setState({ ...state, loading: false, error: (err as Error).message })
   }
 }
@@ -170,6 +210,7 @@ export async function deleteProject(id: string) {
 }
 
 export function setActiveProject(id: string | null) {
+  boardLoadVersion += 1
   setState({ ...state, activeProjectId: id })
   localStorage.setItem(ACTIVE_PROJECT_KEY, id ?? "")
   if (id) loadBoard(id)

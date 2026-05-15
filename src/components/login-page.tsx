@@ -4,8 +4,9 @@ import { useMsal } from "@azure/msal-react"
 import { FolderKanban, LogIn, ShieldCheck } from "lucide-react"
 import heroImage from "@/assets/hero.png"
 import { Button } from "@/components/ui/button"
+import { setPreferredAuthProvider } from "@/lib/auth-provider"
 import { loginRequest } from "@/lib/auth-config"
-import { isGoogleAuthConfigured } from "@/lib/google-auth"
+import { clearGoogleCredential, isGoogleAuthConfigured } from "@/lib/google-auth"
 import { renderGoogleSignInButton } from "@/lib/google-identity"
 
 export function LoginPage() {
@@ -39,7 +40,9 @@ export function LoginPage() {
     setMicrosoftError(null)
 
     try {
+      clearGoogleCredential()
       const result = await instance.loginPopup(loginRequest)
+      setPreferredAuthProvider("microsoft")
       instance.setActiveAccount(result.account)
     } catch (err) {
       setMicrosoftError(err instanceof Error ? err.message : "Login failed")

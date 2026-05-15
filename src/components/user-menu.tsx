@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { getPreferredAuthProvider, setPreferredAuthProvider } from "@/lib/auth-provider"
 import { loginRequest } from "@/lib/auth-config"
 import { clearGoogleCredential, useGoogleAuth } from "@/lib/google-auth"
 
@@ -14,7 +15,12 @@ export function UserMenu() {
   const { instance, accounts } = useMsal()
   const isMicrosoftAuthenticated = useIsAuthenticated()
   const googleAuth = useGoogleAuth()
-  const isAuthenticated = isMicrosoftAuthenticated || googleAuth.isAuthenticated
+  const preferredProvider = getPreferredAuthProvider()
+  const isGoogleActive =
+    googleAuth.isAuthenticated &&
+    (preferredProvider === "google" || !isMicrosoftAuthenticated)
+  const isMicrosoftActive = isMicrosoftAuthenticated && !isGoogleActive
+  const isAuthenticated = isMicrosoftActive || isGoogleActive
 
   if (!isAuthenticated) {
     return (
@@ -22,7 +28,12 @@ export function UserMenu() {
         variant="outline"
         size="sm"
         className="gap-2"
-        onClick={() => instance.loginPopup(loginRequest).catch(console.error)}
+        onClick={async () => {
+          clearGoogleCredential()
+          const result = await instance.loginPopup(loginRequest)
+          setPreferredAuthProvider("microsoft")
+          instance.setActiveAccount(result.account)
+        }}
       >
         <LogIn className="h-4 w-4" />
         Sign in
@@ -32,14 +43,14 @@ export function UserMenu() {
 
   const account = accounts[0]
   const userName =
-    isMicrosoftAuthenticated ? account?.name : googleAuth.user?.name
+    isMicrosoftActive ? account?.name : googleAuth.user?.name
   const userEmail =
-    isMicrosoftAuthenticated ? account?.username : googleAuth.user?.email
+    isMicrosoftActive ? account?.username : googleAuth.user?.email
 
   async function handleLogout() {
     clearGoogleCredential()
 
-    if (isMicrosoftAuthenticated) {
+    if (isMicrosoftActive) {
       await instance.logoutPopup().catch(console.error)
     }
   }

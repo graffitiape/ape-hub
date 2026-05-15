@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react"
+import { clearPreferredAuthProvider, setPreferredAuthProvider } from "@/lib/auth-provider"
 
 const GOOGLE_CREDENTIAL_KEY = "ape-hub-google-credential"
 const GOOGLE_USER_KEY = "ape-hub-google-user"
@@ -99,6 +100,7 @@ export function setGoogleCredential(credential: string) {
 
   localStorage.setItem(GOOGLE_CREDENTIAL_KEY, credential)
   localStorage.setItem(GOOGLE_USER_KEY, JSON.stringify(user))
+  setPreferredAuthProvider("google")
   state = { credential, user }
   emit()
 }
@@ -106,6 +108,7 @@ export function setGoogleCredential(credential: string) {
 export function clearGoogleCredential() {
   localStorage.removeItem(GOOGLE_CREDENTIAL_KEY)
   localStorage.removeItem(GOOGLE_USER_KEY)
+  clearPreferredAuthProvider("google")
   state = { credential: null, user: null }
   window.google?.accounts.id.disableAutoSelect()
   emit()

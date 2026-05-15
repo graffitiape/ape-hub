@@ -1,30 +1,49 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useIsAuthenticated } from "@azure/msal-react"
 import { ProjectSidebar } from "@/components/project-sidebar"
 import { KanbanBoard } from "@/components/kanban-board"
 import { LoginPage } from "@/components/login-page"
 import { UserMenu } from "@/components/user-menu"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { getPreferredAuthProvider } from "@/lib/auth-provider"
 import { useGoogleAuth } from "@/lib/google-auth"
 import { clearKanbanState, loadProjects } from "@/stores/kanban-store"
 
 export default function App() {
   const isMicrosoftAuthenticated = useIsAuthenticated()
   const googleAuth = useGoogleAuth()
-  const isAuthenticated = isMicrosoftAuthenticated || googleAuth.isAuthenticated
+  const previousAuthProvider = useRef<string | null>(null)
+  const preferredProvider = getPreferredAuthProvider()
+  const isGoogleActive =
+    googleAuth.isAuthenticated &&
+    (preferredProvider === "google" || !isMicrosoftAuthenticated)
+  const activeAuthProvider = isGoogleActive
+    ? "google"
+    : isMicrosoftAuthenticated
+      ? "microsoft"
+      : null
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!activeAuthProvider) {
+      previousAuthProvider.current = null
       clearKanbanState()
       return
     }
 
+    if (
+      previousAuthProvider.current &&
+      previousAuthProvider.current !== activeAuthProvider
+    ) {
+      clearKanbanState()
+    }
+
+    previousAuthProvider.current = activeAuthProvider
     void loadProjects()
-  }, [isAuthenticated])
+  }, [activeAuthProvider])
 
   return (
     <TooltipProvider>
-      {!isAuthenticated ? (
+      {!activeAuthProvider ? (
         <LoginPage />
       ) : (
         <div className="flex h-screen overflow-hidden bg-background">

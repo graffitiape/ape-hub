@@ -1,4 +1,5 @@
 import type { IPublicClientApplication } from "@azure/msal-browser"
+import { getPreferredAuthProvider } from "@/lib/auth-provider"
 import { getGoogleCredential } from "@/lib/google-auth"
 
 let msalInstance: IPublicClientApplication | null = null
@@ -12,8 +13,17 @@ export function initApiClient(instance: IPublicClientApplication) {
 async function getToken(): Promise<string | null> {
   if (DEV_MODE || !msalInstance) return null
 
+  const preferredProvider = getPreferredAuthProvider()
+  const googleCredential = getGoogleCredential()
   const accounts = msalInstance.getAllAccounts()
-  if (accounts.length === 0) return getGoogleCredential()
+
+  if (preferredProvider === "google" && googleCredential) {
+    return googleCredential
+  }
+
+  if (accounts.length === 0) {
+    return googleCredential
+  }
 
   try {
     const response = await msalInstance.acquireTokenSilent({
@@ -32,7 +42,7 @@ async function getToken(): Promise<string | null> {
       })
       return response.accessToken
     } catch {
-      return getGoogleCredential()
+      return googleCredential
     }
   }
 }
