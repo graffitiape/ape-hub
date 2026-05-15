@@ -18,9 +18,16 @@ BEGIN
     id          NVARCHAR(21)   PRIMARY KEY,
     name        NVARCHAR(255)  NOT NULL,
     user_id     NVARCHAR(255)  NOT NULL REFERENCES users(id),
+    is_favorite BIT            NOT NULL DEFAULT 0,
     created_at  DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME()
   );
   CREATE INDEX ix_projects_user ON projects(user_id);
+END;
+
+-- Existing databases: add project favorite flag
+IF COL_LENGTH('dbo.projects', 'is_favorite') IS NULL
+BEGIN
+  ALTER TABLE projects ADD is_favorite BIT NOT NULL CONSTRAINT df_projects_is_favorite DEFAULT 0;
 END;
 
 -- Columns

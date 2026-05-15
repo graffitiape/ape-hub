@@ -19,6 +19,13 @@ let storeVersion = 0
 let projectsLoadVersion = 0
 let boardLoadVersion = 0
 
+function sortProjects(projects: Project[]) {
+  return [...projects].sort((a, b) => {
+    if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  })
+}
+
 function emit() {
   listeners.forEach((l) => l())
 }
@@ -71,7 +78,7 @@ export async function loadProjects() {
       return
     }
 
-    setState({ ...state, projects, loading: false })
+    setState({ ...state, projects: sortProjects(projects), loading: false })
 
     // If active project no longer exists, pick the first one
     if (state.activeProjectId && !projects.find((p) => p.id === state.activeProjectId)) {
@@ -143,12 +150,13 @@ export async function addProject(name: string) {
     id: tempId,
     name,
     userId: "",
+    isFavorite: false,
     createdAt: new Date().toISOString(),
   }
   const prev = state
   setState({
     ...state,
-    projects: [...state.projects, optimistic],
+    projects: sortProjects([...state.projects, optimistic]),
     activeProjectId: tempId,
   })
   localStorage.setItem(ACTIVE_PROJECT_KEY, tempId)
@@ -157,7 +165,9 @@ export async function addProject(name: string) {
     const created = await api.post<Project>("/projects", { name })
     setState({
       ...state,
-      projects: state.projects.map((p) => (p.id === tempId ? created : p)),
+      projects: sortProjects(
+        state.projects.map((p) => (p.id === tempId ? created : p))
+      ),
       activeProjectId: created.id,
       columns: [],
       tasks: [],
@@ -173,11 +183,35 @@ export async function renameProject(id: string, name: string) {
   const prev = state
   setState({
     ...state,
-    projects: state.projects.map((p) => (p.id === id ? { ...p, name } : p)),
+    projects: sortProjects(
+      state.projects.map((p) => (p.id === id ? { ...p, name } : p))
+    ),
   })
 
   try {
     await api.patch(`/projects/${id}`, { name })
+  } catch {
+    setState(prev)
+  }
+}
+
+export async function setProjectFavorite(id: string, isFavorite: boolean) {
+  const prev = state
+  setState({
+    ...state,
+    projects: sortProjects(
+      state.projects.map((p) => (p.id === id ? { ...p, isFavorite } : p))
+    ),
+  })
+
+  try {
+    const updated = await api.patch<Project>(`/projects/${id}`, { isFavorite })
+    setState({
+      ...state,
+      projects: sortProjects(
+        state.projects.map((p) => (p.id === id ? updated : p))
+      ),
+    })
   } catch {
     setState(prev)
   }

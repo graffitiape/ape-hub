@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Trash2, FolderKanban, MoreHorizontal, Pencil } from "lucide-react"
+import { Plus, Trash2, FolderKanban, MoreHorizontal, Pencil, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -22,6 +22,7 @@ import {
   addProject,
   renameProject,
   deleteProject,
+  setProjectFavorite,
   setActiveProject,
 } from "@/stores/kanban-store"
 import { cn } from "@/lib/utils"
@@ -83,7 +84,33 @@ export function ProjectSidebar() {
               onClick={() => setActiveProject(project.id)}
             >
               <FolderKanban className="h-4 w-4 shrink-0 opacity-60" />
-              <span className="truncate flex-1">{project.name}</span>
+              <span className="min-w-0 flex-1 truncate">{project.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={
+                  project.isFavorite
+                    ? `Unfavorite ${project.name}`
+                    : `Favorite ${project.name}`
+                }
+                className={cn(
+                  "h-6 w-6 shrink-0 transition-opacity",
+                  project.isFavorite
+                    ? "text-amber-500 opacity-100 hover:text-amber-500"
+                    : "text-muted-foreground opacity-0 group-hover:opacity-100"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setProjectFavorite(project.id, !project.isFavorite)
+                }}
+              >
+                <Star
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    project.isFavorite && "fill-current"
+                  )}
+                />
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <Button
@@ -95,6 +122,17 @@ export function ProjectSidebar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setProjectFavorite(project.id, !project.isFavorite)}
+                  >
+                    <Star
+                      className={cn(
+                        "mr-2 h-3.5 w-3.5",
+                        project.isFavorite && "fill-current text-amber-500"
+                      )}
+                    />
+                    {project.isFavorite ? "Unfavorite" : "Favorite"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setRenameDialog({ id: project.id, name: project.name })}>
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     Rename
