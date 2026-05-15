@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { KanbanColumn } from "@/components/kanban-column"
 import { KanbanBoardSkeleton } from "@/components/loading-skeletons"
 import { TaskCardPreview } from "@/components/task-card"
+import { ProjectIcon } from "@/components/project-icon"
 import {
   useActiveProject,
   useProjectColumns,
@@ -256,6 +257,11 @@ export function KanbanBoard() {
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Board header */}
       <div className="flex items-center gap-3 border-b px-6 py-4">
+        <ProjectIcon
+          iconName={activeProject.iconName}
+          color={activeProject.iconColor}
+          className="h-5 w-5 shrink-0"
+        />
         <h2 className="text-xl font-semibold">{activeProject.name}</h2>
         <span className="text-sm text-muted-foreground">
           {columns.length} column{columns.length !== 1 ? "s" : ""}

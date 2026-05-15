@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Trash2, FolderKanban, MoreHorizontal, Pencil, Star } from "lucide-react"
+import { Plus, Trash2, FolderKanban, MoreHorizontal, Pencil, Star, Palette } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -24,13 +24,29 @@ import {
   deleteProject,
   setProjectFavorite,
   setActiveProject,
+  updateProjectIcon,
 } from "@/stores/kanban-store"
+import {
+  DEFAULT_PROJECT_COLOR,
+  DEFAULT_PROJECT_ICON,
+  projectColorOptions,
+  projectIconOptions,
+} from "@/lib/project-icon-data"
+import { ProjectIcon } from "@/components/project-icon"
 import { cn } from "@/lib/utils"
+import type { Project } from "@/types/kanban"
+
+type IconDialogState = Pick<Project, "id" | "name" | "iconName" | "iconColor">
+
+function isValidHexColor(color: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(color)
+}
 
 export function ProjectSidebar() {
   const { projects, activeProjectId } = useKanbanStore()
   const [newName, setNewName] = useState("")
   const [renameDialog, setRenameDialog] = useState<{ id: string; name: string } | null>(null)
+  const [iconDialog, setIconDialog] = useState<IconDialogState | null>(null)
 
   function handleAdd() {
     const name = newName.trim()
@@ -45,6 +61,26 @@ export function ProjectSidebar() {
     if (!name) return
     renameProject(renameDialog.id, name)
     setRenameDialog(null)
+  }
+
+  function openIconDialog(project: Project) {
+    setIconDialog({
+      id: project.id,
+      name: project.name,
+      iconName: project.iconName || DEFAULT_PROJECT_ICON,
+      iconColor: project.iconColor || DEFAULT_PROJECT_COLOR,
+    })
+  }
+
+  function handleSaveIcon() {
+    if (!iconDialog || !isValidHexColor(iconDialog.iconColor)) return
+
+    updateProjectIcon(
+      iconDialog.id,
+      iconDialog.iconName,
+      iconDialog.iconColor
+    )
+    setIconDialog(null)
   }
 
   return (
@@ -83,7 +119,11 @@ export function ProjectSidebar() {
               )}
               onClick={() => setActiveProject(project.id)}
             >
-              <FolderKanban className="h-4 w-4 shrink-0 opacity-60" />
+              <ProjectIcon
+                iconName={project.iconName}
+                color={project.iconColor}
+                className="h-4 w-4 shrink-0"
+              />
               <span className="min-w-0 flex-1 truncate">{project.name}</span>
               <Button
                 variant="ghost"
@@ -137,6 +177,10 @@ export function ProjectSidebar() {
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     Rename
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openIconDialog(project)}>
+                    <Palette className="mr-2 h-3.5 w-3.5" />
+                    Customize icon
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive"
                     onClick={() => deleteProject(project.id)}
@@ -169,6 +213,116 @@ export function ProjectSidebar() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameDialog(null)}>Cancel</Button>
             <Button onClick={handleRename}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!iconDialog} onOpenChange={(open) => !open && setIconDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Project Icon</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-3">
+              <ProjectIcon
+                iconName={iconDialog?.iconName}
+                color={iconDialog?.iconColor}
+                className="h-6 w-6 shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {iconDialog?.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {iconDialog?.iconColor}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-5 gap-2">
+              {projectIconOptions.map((option) => (
+                <Button
+                  key={option.name}
+                  type="button"
+                  variant={iconDialog?.iconName === option.name ? "default" : "outline"}
+                  size="icon"
+                  aria-label={option.label}
+                  className="h-10 w-full"
+                  onClick={() =>
+                    iconDialog &&
+                    setIconDialog({ ...iconDialog, iconName: option.name })
+                  }
+                >
+                  <option.icon className="h-4 w-4" />
+                </Button>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-6 gap-2">
+                {projectColorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-label={color}
+                    className={cn(
+                      "h-8 rounded-md border transition-transform",
+                      iconDialog?.iconColor.toLowerCase() === color.toLowerCase()
+                        ? "scale-95 ring-2 ring-ring ring-offset-2 ring-offset-background"
+                        : "hover:scale-95"
+                    )}
+                    style={{ backgroundColor: color }}
+                    onClick={() =>
+                      iconDialog &&
+                      setIconDialog({ ...iconDialog, iconColor: color })
+                    }
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={
+                    isValidHexColor(iconDialog?.iconColor ?? "")
+                      ? iconDialog?.iconColor
+                      : DEFAULT_PROJECT_COLOR
+                  }
+                  aria-label="Project icon color"
+                  className="h-9 w-10 shrink-0 rounded-md border bg-background p-1"
+                  onChange={(event) =>
+                    iconDialog &&
+                    setIconDialog({
+                      ...iconDialog,
+                      iconColor: event.target.value,
+                    })
+                  }
+                />
+                <Input
+                  value={iconDialog?.iconColor ?? ""}
+                  onChange={(event) =>
+                    iconDialog &&
+                    setIconDialog({
+                      ...iconDialog,
+                      iconColor: event.target.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.key === "Enter" && handleSaveIcon()}
+                  className="h-9 font-mono text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIconDialog(null)}>Cancel</Button>
+            <Button
+              onClick={handleSaveIcon}
+              disabled={!isValidHexColor(iconDialog?.iconColor ?? "")}
+            >
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -19,6 +19,8 @@ BEGIN
     name        NVARCHAR(255)  NOT NULL,
     user_id     NVARCHAR(255)  NOT NULL REFERENCES users(id),
     is_favorite BIT            NOT NULL DEFAULT 0,
+    icon_name   NVARCHAR(64)   NOT NULL DEFAULT 'folder-kanban',
+    icon_color  NVARCHAR(32)   NOT NULL DEFAULT '#64748b',
     created_at  DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME()
   );
   CREATE INDEX ix_projects_user ON projects(user_id);
@@ -28,6 +30,17 @@ END;
 IF COL_LENGTH('dbo.projects', 'is_favorite') IS NULL
 BEGIN
   ALTER TABLE projects ADD is_favorite BIT NOT NULL CONSTRAINT df_projects_is_favorite DEFAULT 0;
+END;
+
+-- Existing databases: add project icon metadata
+IF COL_LENGTH('dbo.projects', 'icon_name') IS NULL
+BEGIN
+  ALTER TABLE projects ADD icon_name NVARCHAR(64) NOT NULL CONSTRAINT df_projects_icon_name DEFAULT 'folder-kanban';
+END;
+
+IF COL_LENGTH('dbo.projects', 'icon_color') IS NULL
+BEGIN
+  ALTER TABLE projects ADD icon_color NVARCHAR(32) NOT NULL CONSTRAINT df_projects_icon_color DEFAULT '#64748b';
 END;
 
 -- Columns

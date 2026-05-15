@@ -10,9 +10,15 @@ const projectSelect = `
     name,
     user_id AS userId,
     CAST(is_favorite AS bit) AS isFavorite,
+    icon_name AS iconName,
+    icon_color AS iconColor,
     created_at AS createdAt
   FROM projects
 `
+
+function isValidHexColor(color: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(color)
+}
 
 // GET /api/projects — list user's projects
 app.get("/", async (c) => {
@@ -54,6 +60,8 @@ app.patch("/:id", async (c) => {
   const updates = await c.req.json<{
     name?: string
     isFavorite?: boolean
+    iconName?: string
+    iconColor?: string
   }>()
 
   const sets: string[] = []
@@ -75,6 +83,26 @@ app.patch("/:id", async (c) => {
   if (updates.isFavorite !== undefined) {
     sets.push("is_favorite = @isFavorite")
     request.input("isFavorite", sql.Bit, updates.isFavorite)
+  }
+
+  if (updates.iconName !== undefined) {
+    const iconName = updates.iconName.trim()
+    if (!iconName || iconName.length > 64) {
+      return c.json({ error: "Icon name is invalid" }, 400)
+    }
+
+    sets.push("icon_name = @iconName")
+    request.input("iconName", sql.NVarChar(64), iconName)
+  }
+
+  if (updates.iconColor !== undefined) {
+    const iconColor = updates.iconColor.trim()
+    if (!isValidHexColor(iconColor)) {
+      return c.json({ error: "Icon color must be a hex color" }, 400)
+    }
+
+    sets.push("icon_color = @iconColor")
+    request.input("iconColor", sql.NVarChar(32), iconColor)
   }
 
   if (sets.length === 0) {

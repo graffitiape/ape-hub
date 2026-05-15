@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react"
 import type { KanbanState, Project, Column, Task, BoardData } from "@/types/kanban"
 import { api } from "@/lib/api-client"
+import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "@/lib/project-icon-data"
 import { nanoid } from "nanoid"
 
 const ACTIVE_PROJECT_KEY = "ape-hub-active-project"
@@ -151,6 +152,8 @@ export async function addProject(name: string) {
     name,
     userId: "",
     isFavorite: false,
+    iconName: DEFAULT_PROJECT_ICON,
+    iconColor: DEFAULT_PROJECT_COLOR,
     createdAt: new Date().toISOString(),
   }
   const prev = state
@@ -206,6 +209,35 @@ export async function setProjectFavorite(id: string, isFavorite: boolean) {
 
   try {
     const updated = await api.patch<Project>(`/projects/${id}`, { isFavorite })
+    setState({
+      ...state,
+      projects: sortProjects(
+        state.projects.map((p) => (p.id === id ? updated : p))
+      ),
+    })
+  } catch {
+    setState(prev)
+  }
+}
+
+export async function updateProjectIcon(
+  id: string,
+  iconName: string,
+  iconColor: string
+) {
+  const prev = state
+  setState({
+    ...state,
+    projects: state.projects.map((p) =>
+      p.id === id ? { ...p, iconName, iconColor } : p
+    ),
+  })
+
+  try {
+    const updated = await api.patch<Project>(`/projects/${id}`, {
+      iconName,
+      iconColor,
+    })
     setState({
       ...state,
       projects: sortProjects(

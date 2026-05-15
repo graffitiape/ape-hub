@@ -12,6 +12,8 @@ export interface Project {
   name: string
   userId: string
   isFavorite: boolean
+  iconName: string
+  iconColor: string
   createdAt: string
 }
 

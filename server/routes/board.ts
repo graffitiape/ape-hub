@@ -15,7 +15,7 @@ app.get("/projects/:projectId/board", async (c) => {
     .input("projectId", sql.NVarChar(21), projectId)
     .input("userId", sql.NVarChar(255), userId)
     .query(
-      "SELECT id, name, user_id AS userId, is_favorite AS isFavorite, created_at AS createdAt FROM projects WHERE id = @projectId AND user_id = @userId"
+      "SELECT id, name, user_id AS userId, is_favorite AS isFavorite, icon_name AS iconName, icon_color AS iconColor, created_at AS createdAt FROM projects WHERE id = @projectId AND user_id = @userId"
     )
 
   if (projectResult.recordset.length === 0)
