@@ -22,6 +22,7 @@ import { KanbanColumn } from "@/components/kanban-column"
 import { KanbanBoardSkeleton } from "@/components/loading-skeletons"
 import { TaskCardPreview } from "@/components/task-card"
 import { ProjectIcon } from "@/components/project-icon"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import {
   useActiveProject,
   useProjectColumns,
@@ -76,6 +77,7 @@ export function KanbanBoard() {
   const [newColumnTitle, setNewColumnTitle] = useState("")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const dragSnapshot = useRef<DragSnapshot | null>(null)
+  const isDesktop = useMediaQuery("(min-width: 768px)")
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -282,7 +284,12 @@ export function KanbanBoard() {
           onDragCancel={handleDragCancel}
         >
           {columns.map((col) => (
-            <KanbanColumn key={col.id} column={col} />
+            <KanbanColumn
+              key={col.id}
+              column={col}
+              columns={columns}
+              enableTaskDrag={isDesktop}
+            />
           ))}
 
           <DragOverlay>

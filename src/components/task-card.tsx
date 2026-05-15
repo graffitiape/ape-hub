@@ -1,10 +1,16 @@
 import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Pencil, Trash2 } from "lucide-react"
+import { ChevronDown, GripVertical, Pencil, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -12,12 +18,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { updateTask, deleteTask } from "@/stores/kanban-store"
-import type { Task } from "@/types/kanban"
+import { updateTask, deleteTask, moveTaskToColumn } from "@/stores/kanban-store"
+import type { Column, Task } from "@/types/kanban"
 import { cn } from "@/lib/utils"
 
 interface TaskCardProps {
   task: Task
+  columns?: Column[]
+  enableDrag?: boolean
 }
 
 export function TaskCardPreview({ task }: TaskCardProps) {
@@ -40,10 +48,16 @@ export function TaskCardPreview({ task }: TaskCardProps) {
   )
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({
+  task,
+  columns = [],
+  enableDrag = true,
+}: TaskCardProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
   const [editDesc, setEditDesc] = useState(task.description)
+  const currentColumn = columns.find((column) => column.id === task.columnId)
+  const canMoveStatus = columns.length > 1
 
   const {
     attributes,
@@ -52,11 +66,15 @@ export function TaskCard({ task }: TaskCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id, data: { type: "task", task } })
+  } = useSortable({
+    id: task.id,
+    data: { type: "task", task },
+    disabled: !enableDrag,
+  })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: enableDrag ? CSS.Transform.toString(transform) : undefined,
+    transition: enableDrag ? transition : undefined,
   }
 
   function handleSave() {
@@ -69,53 +87,97 @@ export function TaskCard({ task }: TaskCardProps) {
       <Card
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
-        aria-label={`Drag task ${task.title}`}
+        {...(enableDrag ? attributes : {})}
+        {...(enableDrag ? listeners : {})}
+        aria-label={enableDrag ? `Drag task ${task.title}` : `Task ${task.title}`}
         className={cn(
-          "group flex w-full max-w-full touch-none cursor-grab items-start gap-2 p-3 active:cursor-grabbing",
+          "group w-full max-w-full p-3",
+          enableDrag
+            ? "touch-none cursor-grab active:cursor-grabbing"
+            : "touch-pan-y cursor-default",
           isDragging && "opacity-50 shadow-lg"
         )}
       >
-        <div className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-foreground">
-          <GripVertical className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <p className="whitespace-pre-wrap break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">
-            {task.title}
-          </p>
-          {task.description && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
-              {task.description}
+        <div className="flex items-start gap-2">
+          <div className="mt-0.5 hidden shrink-0 text-muted-foreground group-hover:text-foreground md:block">
+            <GripVertical className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="whitespace-pre-wrap break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">
+              {task.title}
             </p>
-          )}
+            {task.description && (
+              <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                {task.description}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 md:h-6 md:w-6"
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                setEditTitle(task.title)
+                setEditDesc(task.description)
+                setEditOpen(true)
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5 md:h-3 md:w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive md:h-6 md:w-6"
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              onClick={() => deleteTask(task.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5 md:h-3 md:w-3" />
+            </Button>
+          </div>
         </div>
-        <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onPointerDown={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-            onClick={() => {
-              setEditTitle(task.title)
-              setEditDesc(task.description)
-              setEditOpen(true)
-            }}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-destructive"
-            onPointerDown={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-            onClick={() => deleteTask(task.id)}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
+
+        {canMoveStatus ? (
+          <div className="mt-3 flex md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 min-w-0 flex-1 justify-between gap-2 text-xs"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <span className="min-w-0 truncate">
+                    {currentColumn?.title ?? "Status"}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-48"
+              >
+                {columns.map((column) => (
+                  <DropdownMenuItem
+                    key={column.id}
+                    disabled={column.id === task.columnId}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      moveTaskToColumn(task.id, column.id)
+                    }}
+                  >
+                    {column.title}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : null}
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

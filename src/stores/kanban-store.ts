@@ -443,6 +443,33 @@ export async function moveTask(
   }
 }
 
+export async function moveTaskToColumn(taskId: string, toColumnId: string) {
+  const task = state.tasks.find((currentTask) => currentTask.id === taskId)
+  if (!task || task.columnId === toColumnId) return
+
+  const prev = state
+  const fromColumnId = task.columnId
+  const targetIndex = state.tasks.filter((t) => t.columnId === toColumnId).length
+
+  moveTaskLocally(taskId, toColumnId, targetIndex)
+
+  const finalTask = state.tasks.find((currentTask) => currentTask.id === taskId)
+  if (!finalTask) {
+    setState(prev)
+    return
+  }
+
+  try {
+    await persistTaskMove(taskId, finalTask.columnId, finalTask.order)
+    await Promise.all([
+      persistTaskOrder(fromColumnId, getOrderedTaskIds(fromColumnId)),
+      persistTaskOrder(finalTask.columnId, getOrderedTaskIds(finalTask.columnId)),
+    ])
+  } catch {
+    setState(prev)
+  }
+}
+
 export function replaceTasks(tasks: Task[]) {
   setState({ ...state, tasks })
 }
@@ -496,6 +523,13 @@ export function reorderTasksLocally(columnId: string, orderedIds: string[]) {
       return idx >= 0 ? { ...t, order: idx } : t
     }),
   })
+}
+
+function getOrderedTaskIds(columnId: string) {
+  return state.tasks
+    .filter((task) => task.columnId === columnId)
+    .sort((a, b) => a.order - b.order)
+    .map((task) => task.id)
 }
 
 export async function persistTaskMove(

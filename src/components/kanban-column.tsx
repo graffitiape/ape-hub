@@ -26,9 +26,15 @@ import { cn } from "@/lib/utils"
 
 interface KanbanColumnProps {
   column: Column
+  columns: Column[]
+  enableTaskDrag: boolean
 }
 
-export function KanbanColumn({ column }: KanbanColumnProps) {
+export function KanbanColumn({
+  column,
+  columns,
+  enableTaskDrag,
+}: KanbanColumnProps) {
   const tasks = useColumnTasks(column.id)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [adding, setAdding] = useState(false)
@@ -88,7 +94,12 @@ export function KanbanColumn({ column }: KanbanColumnProps) {
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           <div className="w-full min-w-0 space-y-2">
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                columns={columns}
+                enableDrag={enableTaskDrag}
+              />
             ))}
           </div>
         </SortableContext>
