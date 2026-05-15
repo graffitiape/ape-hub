@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { ChevronDown, GripVertical, Pencil, Trash2 } from "lucide-react"
+import { ArrowRightLeft, GripVertical, Pencil, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,7 +56,6 @@ export function TaskCard({
   const [editOpen, setEditOpen] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
   const [editDesc, setEditDesc] = useState(task.description)
-  const currentColumn = columns.find((column) => column.id === task.columnId)
   const canMoveStatus = columns.length > 1
 
   const {
@@ -112,11 +111,42 @@ export function TaskCard({
               </p>
             )}
           </div>
-          <div className="flex shrink-0 gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+          <div className="-mt-1 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:mt-0 md:opacity-0 md:group-hover:opacity-100">
+            {canMoveStatus ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Move task to another column"
+                    className="h-7 w-7 md:hidden"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  {columns.map((column) => (
+                    <DropdownMenuItem
+                      key={column.id}
+                      disabled={column.id === task.columnId}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        moveTaskToColumn(task.id, column.id)
+                      }}
+                    >
+                      {column.title}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 md:h-6 md:w-6"
+              className="h-7 w-7 md:h-6 md:w-6"
               onPointerDown={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
               onClick={() => {
@@ -130,7 +160,7 @@ export function TaskCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-destructive md:h-6 md:w-6"
+              className="h-7 w-7 text-destructive md:h-6 md:w-6"
               onPointerDown={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
               onClick={() => deleteTask(task.id)}
@@ -139,45 +169,6 @@ export function TaskCard({
             </Button>
           </div>
         </div>
-
-        {canMoveStatus ? (
-          <div className="mt-3 flex md:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 min-w-0 flex-1 justify-between gap-2 text-xs"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
-                >
-                  <span className="min-w-0 truncate">
-                    {currentColumn?.title ?? "Status"}
-                  </span>
-                  <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-48"
-              >
-                {columns.map((column) => (
-                  <DropdownMenuItem
-                    key={column.id}
-                    disabled={column.id === task.columnId}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      moveTaskToColumn(task.id, column.id)
-                    }}
-                  >
-                    {column.title}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : null}
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

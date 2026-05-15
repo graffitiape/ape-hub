@@ -12,6 +12,7 @@ let state: KanbanState = {
   tasks: [],
   activeProjectId: localStorage.getItem(ACTIVE_PROJECT_KEY),
   loading: false,
+  projectsLoaded: false,
   error: null,
 }
 
@@ -60,6 +61,7 @@ export function clearKanbanState() {
     tasks: [],
     activeProjectId: null,
     loading: false,
+    projectsLoaded: false,
     error: null,
   })
 }
@@ -69,7 +71,7 @@ export function clearKanbanState() {
 export async function loadProjects() {
   const requestVersion = ++projectsLoadVersion
   const currentStoreVersion = storeVersion
-  setState({ ...state, loading: true, error: null })
+  setState({ ...state, loading: true, projectsLoaded: false, error: null })
   try {
     const projects = await api.get<Project[]>("/projects")
     if (
@@ -79,16 +81,27 @@ export async function loadProjects() {
       return
     }
 
-    setState({ ...state, projects: sortProjects(projects), loading: false })
+    const sortedProjects = sortProjects(projects)
+    const nextActiveProjectId =
+      state.activeProjectId &&
+      sortedProjects.some((project) => project.id === state.activeProjectId)
+        ? state.activeProjectId
+        : (sortedProjects[0]?.id ?? null)
 
-    // If active project no longer exists, pick the first one
-    if (state.activeProjectId && !projects.find((p) => p.id === state.activeProjectId)) {
-      const newActive = projects[0]?.id ?? null
-      setActiveProject(newActive)
-    } else if (!state.activeProjectId && projects.length > 0) {
-      setActiveProject(projects[0].id)
-    } else if (state.activeProjectId) {
-      await loadBoard(state.activeProjectId)
+    localStorage.setItem(ACTIVE_PROJECT_KEY, nextActiveProjectId ?? "")
+    setState({
+      ...state,
+      projects: sortedProjects,
+      activeProjectId: nextActiveProjectId,
+      columns: nextActiveProjectId ? state.columns : [],
+      tasks: nextActiveProjectId ? state.tasks : [],
+      loading: !!nextActiveProjectId,
+      projectsLoaded: true,
+      error: null,
+    })
+
+    if (nextActiveProjectId) {
+      await loadBoard(nextActiveProjectId)
     }
   } catch (err) {
     if (
@@ -98,7 +111,12 @@ export async function loadProjects() {
       return
     }
 
-    setState({ ...state, loading: false, error: (err as Error).message })
+    setState({
+      ...state,
+      loading: false,
+      projectsLoaded: true,
+      error: (err as Error).message,
+    })
   }
 }
 

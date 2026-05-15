@@ -8,5 +8,6 @@ export interface KanbanState {
   tasks: Task[]
   activeProjectId: string | null
   loading: boolean
+  projectsLoaded: boolean
   error: string | null
 }

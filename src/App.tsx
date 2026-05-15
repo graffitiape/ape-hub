@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { getPreferredAuthProvider } from "@/lib/auth-provider"
 import { useGoogleAuth } from "@/lib/google-auth"
+import { requestGoogleCredentialRefresh } from "@/lib/google-identity"
 import {
   clearKanbanState,
   loadProjects,
@@ -21,7 +22,7 @@ import {
 export default function App() {
   const isMicrosoftAuthenticated = useIsAuthenticated()
   const googleAuth = useGoogleAuth()
-  const { loading, projects } = useKanbanStore()
+  const { loading, projects, projectsLoaded } = useKanbanStore()
   const activeProject = useActiveProject()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const previousAuthProvider = useRef<string | null>(null)
@@ -53,11 +54,30 @@ export default function App() {
     void loadProjects()
   }, [activeAuthProvider])
 
+  useEffect(() => {
+    if (activeAuthProvider !== "google" || !googleAuth.user?.expiresAt) return
+
+    const refreshBufferMs = 5 * 60 * 1000
+    const msUntilRefresh =
+      googleAuth.user.expiresAt * 1000 - Date.now() - refreshBufferMs
+    const refreshGoogleSession = () => {
+      void requestGoogleCredentialRefresh((message) => console.warn(message))
+    }
+
+    if (msUntilRefresh <= 0) {
+      refreshGoogleSession()
+      return
+    }
+
+    const timeout = window.setTimeout(refreshGoogleSession, msUntilRefresh)
+    return () => window.clearTimeout(timeout)
+  }, [activeAuthProvider, googleAuth.user?.expiresAt])
+
   return (
     <TooltipProvider>
       {!activeAuthProvider ? (
         <LoginPage />
-      ) : loading && projects.length === 0 ? (
+      ) : !projectsLoaded || (loading && projects.length === 0) ? (
         <AppShellSkeleton />
       ) : (
         <div className="flex h-dvh overflow-hidden bg-background">

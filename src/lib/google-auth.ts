@@ -130,7 +130,10 @@ export function useGoogleAuth() {
 
   return {
     ...snapshot,
-    isAuthenticated: !!snapshot.credential && !!snapshot.user,
+    isAuthenticated:
+      !!snapshot.credential &&
+      !!snapshot.user &&
+      !isExpired(snapshot.user.expiresAt),
     isConfigured: isGoogleAuthConfigured(),
   }
 }

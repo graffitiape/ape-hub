@@ -97,6 +97,35 @@ export async function renderGoogleSignInButton(
   })
 }
 
+export async function requestGoogleCredentialRefresh(
+  onError?: (message: string) => void
+) {
+  const clientId = getGoogleClientId()
+  if (!clientId) return
+
+  await loadGoogleIdentityScript()
+
+  window.google?.accounts.id.initialize({
+    client_id: clientId,
+    auto_select: true,
+    cancel_on_tap_outside: true,
+    callback: (response: GoogleCredentialResponse) => {
+      if (!response.credential) {
+        onError?.("Google did not return a credential")
+        return
+      }
+
+      try {
+        setGoogleCredential(response.credential)
+      } catch (err) {
+        onError?.(err instanceof Error ? err.message : "Google login failed")
+      }
+    },
+  })
+
+  window.google?.accounts.id.prompt()
+}
+
 declare global {
   interface Window {
     google?: {
@@ -107,6 +136,7 @@ declare global {
             container: HTMLElement,
             configuration: GoogleButtonConfiguration
           ) => void
+          prompt: () => void
           disableAutoSelect: () => void
         }
       }
