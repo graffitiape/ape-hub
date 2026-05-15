@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 function SidebarSkeleton() {
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className="hidden h-dvh w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
         <FolderKanban className="h-5 w-5 text-sidebar-primary" />
         <Skeleton className="h-5 w-24" />
@@ -30,25 +30,31 @@ function SidebarSkeleton() {
 
 function HeaderSkeleton() {
   return (
-    <header className="flex h-16 shrink-0 items-center justify-end border-b px-4">
-      <Skeleton className="h-8 w-8 rounded-full" />
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b px-3 sm:h-16 sm:px-4">
+      <Skeleton className="h-9 w-9 rounded-md md:hidden" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+      <Skeleton className="ml-auto h-8 w-8 rounded-full" />
     </header>
   )
 }
 
 export function KanbanBoardSkeleton() {
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-center gap-3 border-b px-6 py-4">
-        <Skeleton className="h-7 w-44" />
-        <Skeleton className="h-5 w-20" />
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex items-center gap-2 border-b px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+        <Skeleton className="h-5 w-5 rounded-sm" />
+        <Skeleton className="h-7 min-w-0 flex-1 max-w-44" />
+        <Skeleton className="h-5 w-20 shrink-0" />
       </div>
 
-      <div className="flex flex-1 gap-4 overflow-hidden p-4">
+      <div className="flex flex-1 gap-3 overflow-hidden p-3 sm:gap-4 sm:p-4">
         {Array.from({ length: 3 }).map((_, columnIndex) => (
           <div
             key={columnIndex}
-            className="flex h-full w-[22rem] shrink-0 flex-col rounded-xl border bg-card"
+            className="flex h-full w-[calc(100vw-2rem)] max-w-[22rem] shrink-0 flex-col rounded-xl border bg-card sm:w-[22rem]"
           >
             <div className="flex items-center gap-2 border-b px-3 py-3">
               <Skeleton className="h-5 flex-1" />
@@ -77,7 +83,7 @@ export function KanbanBoardSkeleton() {
           </div>
         ))}
 
-        <Skeleton className="h-10 w-[22rem] shrink-0 rounded-md" />
+        <Skeleton className="h-10 w-[calc(100vw-2rem)] max-w-[22rem] shrink-0 rounded-md sm:w-[22rem]" />
       </div>
     </div>
   )
@@ -85,7 +91,7 @@ export function KanbanBoardSkeleton() {
 
 export function AppShellSkeleton() {
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <SidebarSkeleton />
       <main className="flex flex-1 flex-col overflow-hidden">
         <HeaderSkeleton />

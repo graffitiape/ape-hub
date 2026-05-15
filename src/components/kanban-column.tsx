@@ -56,12 +56,12 @@ export function KanbanColumn({ column }: KanbanColumnProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        "flex h-full w-[22rem] shrink-0 flex-col rounded-xl border bg-card",
+        "flex h-full w-[calc(100vw-2rem)] max-w-[22rem] shrink-0 snap-start flex-col rounded-xl border bg-card sm:w-[22rem]",
         isOver && "ring-2 ring-primary/40"
       )}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 px-3 py-3 border-b">
+      <div className="flex items-center gap-2 border-b px-3 py-3">
         <h3 className="text-sm font-semibold truncate flex-1">{column.title}</h3>
         <Badge variant="secondary" className="text-xs font-normal">{tasks.length}</Badge>
         <DropdownMenu>

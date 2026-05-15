@@ -38,11 +38,16 @@ import type { Project } from "@/types/kanban"
 
 type IconDialogState = Pick<Project, "id" | "name" | "iconName" | "iconColor">
 
+interface ProjectSidebarProps {
+  className?: string
+  onProjectSelect?: () => void
+}
+
 function isValidHexColor(color: string) {
   return /^#[0-9a-fA-F]{6}$/.test(color)
 }
 
-export function ProjectSidebar() {
+export function ProjectSidebar({ className, onProjectSelect }: ProjectSidebarProps) {
   const { projects, activeProjectId } = useKanbanStore()
   const [newName, setNewName] = useState("")
   const [renameDialog, setRenameDialog] = useState<{ id: string; name: string } | null>(null)
@@ -84,7 +89,12 @@ export function ProjectSidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside
+      className={cn(
+        "flex h-dvh w-64 max-w-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
+        className
+      )}
+    >
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
         <FolderKanban className="h-5 w-5 text-sidebar-primary" />
         <h1 className="text-lg font-semibold">Ape Hub</h1>
@@ -112,12 +122,15 @@ export function ProjectSidebar() {
             <div
               key={project.id}
               className={cn(
-                "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors",
+                "group flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors sm:py-1.5",
                 project.id === activeProjectId
                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                   : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
               )}
-              onClick={() => setActiveProject(project.id)}
+              onClick={() => {
+                setActiveProject(project.id)
+                onProjectSelect?.()
+              }}
             >
               <ProjectIcon
                 iconName={project.iconName}
@@ -134,10 +147,10 @@ export function ProjectSidebar() {
                     : `Favorite ${project.name}`
                 }
                 className={cn(
-                  "h-6 w-6 shrink-0 transition-opacity",
+                  "h-8 w-8 shrink-0 transition-opacity sm:h-6 sm:w-6",
                   project.isFavorite
                     ? "text-amber-500 opacity-100 hover:text-amber-500"
-                    : "text-muted-foreground opacity-0 group-hover:opacity-100"
+                    : "text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                 )}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -156,7 +169,7 @@ export function ProjectSidebar() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 opacity-100 transition-opacity sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <MoreHorizontal className="h-3.5 w-3.5" />
                   </Button>

@@ -62,10 +62,13 @@ export function UserMenu() {
           <User className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <div className="px-2 py-1.5">
-          <p className="text-sm font-medium">{userName ?? "User"}</p>
-          <p className="text-xs text-muted-foreground">{userEmail}</p>
+      <DropdownMenuContent
+        align="end"
+        className="w-64 max-w-[calc(100vw-1rem)]"
+      >
+        <div className="min-w-0 px-2 py-1.5">
+          <p className="truncate text-sm font-medium">{userName ?? "User"}</p>
+          <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
         </div>
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-3.5 w-3.5" />

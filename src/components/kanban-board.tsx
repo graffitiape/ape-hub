@@ -254,22 +254,24 @@ export function KanbanBoard() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* Board header */}
-      <div className="flex items-center gap-3 border-b px-6 py-4">
+      <div className="flex min-w-0 items-center gap-2 border-b px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
         <ProjectIcon
           iconName={activeProject.iconName}
           color={activeProject.iconColor}
           className="h-5 w-5 shrink-0"
         />
-        <h2 className="text-xl font-semibold">{activeProject.name}</h2>
-        <span className="text-sm text-muted-foreground">
+        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold sm:text-xl">
+          {activeProject.name}
+        </h2>
+        <span className="shrink-0 text-sm text-muted-foreground">
           {columns.length} column{columns.length !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* Columns */}
-      <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+      <div className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto p-3 sm:gap-4 sm:p-4">
         <DndContext
           sensors={sensors}
           collisionDetection={boardCollisionDetection}
@@ -289,7 +291,7 @@ export function KanbanBoard() {
         </DndContext>
 
         {/* Add column */}
-        <div className="w-[22rem] shrink-0">
+        <div className="w-[calc(100vw-2rem)] max-w-[22rem] shrink-0 snap-start sm:w-[22rem]">
           {addingColumn ? (
             <div className="space-y-2 rounded-xl border bg-card p-3">
               <Input
