@@ -19,10 +19,12 @@ import { Plus, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { KanbanColumn } from "@/components/kanban-column"
+import { KanbanBoardSkeleton } from "@/components/loading-skeletons"
 import { TaskCardPreview } from "@/components/task-card"
 import {
   useActiveProject,
   useProjectColumns,
+  useKanbanStore,
   addColumn,
   getKanbanState,
   moveTaskLocally,
@@ -68,6 +70,7 @@ const boardCollisionDetection: CollisionDetection = (args) => {
 export function KanbanBoard() {
   const activeProject = useActiveProject()
   const columns = useProjectColumns(activeProject?.id ?? null)
+  const { loading, tasks } = useKanbanStore()
   const [addingColumn, setAddingColumn] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState("")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
@@ -76,6 +79,14 @@ export function KanbanBoard() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
+
+  const activeProjectTaskCount = activeProject
+    ? tasks.filter((task) => columns.some((column) => column.id === task.columnId)).length
+    : 0
+
+  if (loading && (!activeProject || (columns.length === 0 && activeProjectTaskCount === 0))) {
+    return <KanbanBoardSkeleton />
+  }
 
   if (!activeProject) {
     return (

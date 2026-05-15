@@ -129,6 +129,15 @@
   }
 }
 
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -138,5 +147,18 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .shimmer-skeleton {
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--muted) 86%, transparent),
+      color-mix(in oklch, var(--muted-foreground) 12%, var(--muted)),
+      color-mix(in oklch, var(--muted) 86%, transparent)
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
   }
 }
