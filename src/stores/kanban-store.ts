@@ -13,6 +13,7 @@ let state: KanbanState = {
   activeProjectId: localStorage.getItem(ACTIVE_PROJECT_KEY),
   loading: false,
   projectsLoaded: false,
+  boardLoadedProjectId: null,
   error: null,
 }
 
@@ -62,6 +63,7 @@ export function clearKanbanState() {
     activeProjectId: null,
     loading: false,
     projectsLoaded: false,
+    boardLoadedProjectId: null,
     error: null,
   })
 }
@@ -97,6 +99,10 @@ export async function loadProjects() {
       tasks: nextActiveProjectId ? state.tasks : [],
       loading: !!nextActiveProjectId,
       projectsLoaded: true,
+      boardLoadedProjectId:
+        nextActiveProjectId && state.boardLoadedProjectId === nextActiveProjectId
+          ? nextActiveProjectId
+          : null,
       error: null,
     })
 
@@ -123,7 +129,13 @@ export async function loadProjects() {
 export async function loadBoard(projectId: string) {
   const requestVersion = ++boardLoadVersion
   const currentStoreVersion = storeVersion
-  setState({ ...state, loading: true, error: null })
+  setState({
+    ...state,
+    loading: true,
+    boardLoadedProjectId:
+      state.boardLoadedProjectId === projectId ? projectId : null,
+    error: null,
+  })
   try {
     const board = await api.get<BoardData>(`/projects/${projectId}/board`)
     if (
@@ -147,6 +159,8 @@ export async function loadBoard(projectId: string) {
         ...board.tasks,
       ],
       loading: false,
+      boardLoadedProjectId: projectId,
+      error: null,
     })
   } catch (err) {
     if (
@@ -157,7 +171,13 @@ export async function loadBoard(projectId: string) {
       return
     }
 
-    setState({ ...state, loading: false, error: (err as Error).message })
+    setState({
+      ...state,
+      loading: false,
+      boardLoadedProjectId:
+        state.boardLoadedProjectId === projectId ? projectId : null,
+      error: (err as Error).message,
+    })
   }
 }
 
@@ -179,6 +199,7 @@ export async function addProject(name: string) {
     ...state,
     projects: sortProjects([...state.projects, optimistic]),
     activeProjectId: tempId,
+    boardLoadedProjectId: null,
   })
   localStorage.setItem(ACTIVE_PROJECT_KEY, tempId)
 
@@ -192,6 +213,7 @@ export async function addProject(name: string) {
       activeProjectId: created.id,
       columns: [],
       tasks: [],
+      boardLoadedProjectId: created.id,
     })
     localStorage.setItem(ACTIVE_PROJECT_KEY, created.id)
   } catch {
@@ -281,6 +303,8 @@ export async function deleteProject(id: string) {
     columns: state.columns.filter((c) => c.projectId !== id),
     tasks: state.tasks.filter((t) => !columnIds.includes(t.columnId)),
     activeProjectId: newActiveId,
+    boardLoadedProjectId:
+      state.boardLoadedProjectId === newActiveId ? newActiveId : null,
   })
   localStorage.setItem(ACTIVE_PROJECT_KEY, newActiveId ?? "")
 
@@ -295,7 +319,11 @@ export async function deleteProject(id: string) {
 
 export function setActiveProject(id: string | null) {
   boardLoadVersion += 1
-  setState({ ...state, activeProjectId: id })
+  setState({
+    ...state,
+    activeProjectId: id,
+    boardLoadedProjectId: state.boardLoadedProjectId === id ? id : null,
+  })
   localStorage.setItem(ACTIVE_PROJECT_KEY, id ?? "")
   if (id) loadBoard(id)
 }

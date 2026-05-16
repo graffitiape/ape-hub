@@ -27,14 +27,20 @@ export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const previousAuthProvider = useRef<string | null>(null)
   const preferredProvider = getPreferredAuthProvider()
-  const isGoogleActive =
-    googleAuth.isAuthenticated &&
-    (preferredProvider === "google" || !isMicrosoftAuthenticated)
-  const activeAuthProvider = isGoogleActive
-    ? "google"
-    : isMicrosoftAuthenticated
-      ? "microsoft"
-      : null
+  const activeAuthProvider =
+    preferredProvider === "google"
+      ? googleAuth.isAuthenticated
+        ? "google"
+        : null
+      : preferredProvider === "microsoft"
+        ? isMicrosoftAuthenticated
+          ? "microsoft"
+          : null
+        : googleAuth.isAuthenticated
+          ? "google"
+          : isMicrosoftAuthenticated
+            ? "microsoft"
+            : null
 
   useEffect(() => {
     if (!activeAuthProvider) {

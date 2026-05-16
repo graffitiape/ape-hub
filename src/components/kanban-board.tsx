@@ -29,6 +29,8 @@ import {
   useKanbanStore,
   addColumn,
   getKanbanState,
+  loadBoard,
+  loadProjects,
   moveTaskLocally,
   persistTaskMove,
   persistTaskOrder,
@@ -72,7 +74,7 @@ const boardCollisionDetection: CollisionDetection = (args) => {
 export function KanbanBoard() {
   const activeProject = useActiveProject()
   const columns = useProjectColumns(activeProject?.id ?? null)
-  const { loading, tasks } = useKanbanStore()
+  const { loading, tasks, error, boardLoadedProjectId } = useKanbanStore()
   const [addingColumn, setAddingColumn] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState("")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
@@ -86,12 +88,34 @@ export function KanbanBoard() {
   const activeProjectTaskCount = activeProject
     ? tasks.filter((task) => columns.some((column) => column.id === task.columnId)).length
     : 0
+  const isBoardLoaded =
+    !!activeProject && boardLoadedProjectId === activeProject.id
 
   if (loading && (!activeProject || (columns.length === 0 && activeProjectTaskCount === 0))) {
     return <KanbanBoardSkeleton />
   }
 
   if (!activeProject) {
+    if (error) {
+      return (
+        <div className="flex flex-1 items-center justify-center px-4">
+          <div className="max-w-sm space-y-3 text-center">
+            <LayoutGrid className="mx-auto h-12 w-12 text-muted-foreground/40" />
+            <p className="text-sm font-medium">Projects could not load</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button
+              size="sm"
+              onClick={() => {
+                void loadProjects()
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-center space-y-3">
@@ -100,6 +124,30 @@ export function KanbanBoard() {
         </div>
       </div>
     )
+  }
+
+  if (!isBoardLoaded) {
+    if (error) {
+      return (
+        <div className="flex flex-1 items-center justify-center px-4">
+          <div className="max-w-sm space-y-3 text-center">
+            <LayoutGrid className="mx-auto h-12 w-12 text-muted-foreground/40" />
+            <p className="text-sm font-medium">Board could not load</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button
+              size="sm"
+              onClick={() => {
+                void loadBoard(activeProject.id)
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    return <KanbanBoardSkeleton />
   }
 
   function handleAddColumn() {

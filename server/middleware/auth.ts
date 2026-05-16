@@ -14,6 +14,8 @@ const DEV_MODE = process.env.DEV_MODE === "true"
 
 let microsoftJwks: ReturnType<typeof createRemoteJWKSet> | null = null
 let googleJwks: ReturnType<typeof createRemoteJWKSet> | null = null
+const userUpsertTimes = new Map<string, number>()
+const USER_UPSERT_INTERVAL_MS = 10 * 60 * 1000
 
 type AuthenticatedUser = {
   id: string
@@ -96,6 +98,15 @@ async function verifyToken(token: string): Promise<AuthenticatedUser> {
   }
 }
 
+async function upsertUserIfNeeded(user: AuthenticatedUser) {
+  const now = Date.now()
+  const lastUpsertAt = userUpsertTimes.get(user.id) ?? 0
+  if (now - lastUpsertAt < USER_UPSERT_INTERVAL_MS) return
+
+  await upsertUser(user.id, user.name, user.email)
+  userUpsertTimes.set(user.id, now)
+}
+
 export async function authMiddleware(c: Context, next: Next) {
   if (DEV_MODE) {
     const userId = "dev-user"
@@ -104,7 +115,7 @@ export async function authMiddleware(c: Context, next: Next) {
     c.set("userId", userId)
     c.set("userName", userName)
     c.set("userEmail", userEmail)
-    await upsertUser(userId, userName, userEmail)
+    await upsertUserIfNeeded({ id: userId, name: userName, email: userEmail })
     return next()
   }
 
@@ -121,7 +132,7 @@ export async function authMiddleware(c: Context, next: Next) {
     c.set("userName", user.name)
     c.set("userEmail", user.email)
 
-    await upsertUser(user.id, user.name, user.email)
+    await upsertUserIfNeeded(user)
     return next()
   } catch {
     return c.json({ error: "Invalid token" }, 401)

@@ -17,15 +17,13 @@ async function getToken(): Promise<string | null> {
   const googleCredential = getGoogleCredential()
   const accounts = msalInstance.getAllAccounts()
 
-  if (preferredProvider === "google" && googleCredential) {
+  if (preferredProvider === "google") {
     return googleCredential
   }
 
-  if (accounts.length === 0) {
-    return googleCredential
-  }
+  if (preferredProvider === "microsoft" || accounts.length > 0) {
+    if (accounts.length === 0) return null
 
-  try {
     const response = await msalInstance.acquireTokenSilent({
       scopes: [
         `api://${import.meta.env.VITE_AZURE_CLIENT_ID}/access_as_user`,
@@ -33,18 +31,9 @@ async function getToken(): Promise<string | null> {
       account: accounts[0],
     })
     return response.accessToken
-  } catch {
-    try {
-      const response = await msalInstance.acquireTokenPopup({
-        scopes: [
-          `api://${import.meta.env.VITE_AZURE_CLIENT_ID}/access_as_user`,
-        ],
-      })
-      return response.accessToken
-    } catch {
-      return googleCredential
-    }
   }
+
+  return googleCredential
 }
 
 async function request<T>(

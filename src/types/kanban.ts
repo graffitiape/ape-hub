@@ -9,5 +9,6 @@ export interface KanbanState {
   activeProjectId: string | null
   loading: boolean
   projectsLoaded: boolean
+  boardLoadedProjectId: string | null
   error: string | null
 }
