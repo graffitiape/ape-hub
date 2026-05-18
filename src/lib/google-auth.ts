@@ -63,8 +63,8 @@ function loadStoredState(): GoogleAuthState {
   }
 }
 
-function isExpired(expiresAt: number) {
-  return expiresAt <= Math.floor(Date.now() / 1000)
+function isExpired(expiresAt: number, minLifetimeSeconds = 0) {
+  return expiresAt <= Math.floor(Date.now() / 1000) + minLifetimeSeconds
 }
 
 function decodeGoogleCredential(credential: string): GoogleCredentialPayload {
@@ -114,11 +114,15 @@ export function clearGoogleCredential() {
   emit()
 }
 
-export function getGoogleCredential() {
+export function getGoogleCredential(minLifetimeSeconds = 0) {
   if (!state.credential || !state.user) return null
 
   if (isExpired(state.user.expiresAt)) {
     clearGoogleCredential()
+    return null
+  }
+
+  if (isExpired(state.user.expiresAt, minLifetimeSeconds)) {
     return null
   }
 

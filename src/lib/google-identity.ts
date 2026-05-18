@@ -25,6 +25,11 @@ type GoogleButtonConfiguration = {
   width?: number
 }
 
+type GooglePromptNotification = {
+  isNotDisplayed: () => boolean
+  isSkippedMoment: () => boolean
+}
+
 let scriptPromise: Promise<void> | null = null
 
 function loadGoogleIdentityScript() {
@@ -98,32 +103,52 @@ export async function renderGoogleSignInButton(
 }
 
 export async function requestGoogleCredentialRefresh(
-  onError?: (message: string) => void
+  onError?: (message: string) => void,
+  timeoutMs = 5000
 ) {
   const clientId = getGoogleClientId()
-  if (!clientId) return
+  if (!clientId) return null
 
   await loadGoogleIdentityScript()
 
-  window.google?.accounts.id.initialize({
-    client_id: clientId,
-    auto_select: true,
-    cancel_on_tap_outside: true,
-    callback: (response: GoogleCredentialResponse) => {
-      if (!response.credential) {
-        onError?.("Google did not return a credential")
-        return
-      }
+  return new Promise<string | null>((resolve) => {
+    let settled = false
+    const timeout = window.setTimeout(() => settle(null), timeoutMs)
 
-      try {
-        setGoogleCredential(response.credential)
-      } catch (err) {
-        onError?.(err instanceof Error ? err.message : "Google login failed")
+    function settle(credential: string | null) {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeout)
+      resolve(credential)
+    }
+
+    window.google?.accounts.id.initialize({
+      client_id: clientId,
+      auto_select: true,
+      cancel_on_tap_outside: true,
+      callback: (response: GoogleCredentialResponse) => {
+        if (!response.credential) {
+          onError?.("Google did not return a credential")
+          settle(null)
+          return
+        }
+
+        try {
+          setGoogleCredential(response.credential)
+          settle(response.credential)
+        } catch (err) {
+          onError?.(err instanceof Error ? err.message : "Google login failed")
+          settle(null)
+        }
+      },
+    })
+
+    window.google?.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        settle(null)
       }
-    },
+    })
   })
-
-  window.google?.accounts.id.prompt()
 }
 
 declare global {
@@ -136,7 +161,7 @@ declare global {
             container: HTMLElement,
             configuration: GoogleButtonConfiguration
           ) => void
-          prompt: () => void
+          prompt: (callback?: (notification: GooglePromptNotification) => void) => void
           disableAutoSelect: () => void
         }
       }
